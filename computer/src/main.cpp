@@ -3,5 +3,8 @@
 #include "computer.hpp"
 
 int main() {
-  std::cout << 'a';
+  Computer comp("Computer 1", 4, 1024);
+
+  comp.printStats();
+  comp.start(10);
 }
