@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 
+int processRuntime;
+
 Cloud::Cloud() {
 }
 
@@ -18,4 +20,17 @@ bool Cloud::remove(unsigned int serverId) {
     delete pt;
 
     return true;
+}
+
+void Cloud::start(int runtime) {
+    processRuntime = runtime;
+    
+    run();
+}
+
+void Cloud::run() {
+    for (int i = 0; i < servers.size(); i++)
+    {
+        servers[i]->start(processRuntime);
+    }
 }
