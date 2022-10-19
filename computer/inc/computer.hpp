@@ -4,14 +4,14 @@
 #include <string>
 
 class Computer {
-    private:
+    protected:
         std::string name;
         int numOfCores;
-        int diskSize;
+        uint32_t diskSize;
 
     public:
         Computer(std::string name, int numOfCores, int diskSize);
         void printStats();
         void start(int runtime);
-        bool execute(int leftover); 
+        bool execute(); 
 };

@@ -1,6 +1,8 @@
 #include "computer.hpp"
 #include <iostream>
 
+int leftover;
+
 Computer::Computer(std::string name, int numOfCores, int diskSize) {
     this->name = name;
     this->numOfCores = numOfCores;
@@ -16,25 +18,21 @@ void Computer::printStats() {
 }
 
 void Computer::start(int runtime) {
-    bool finished = false;
-    for (size_t i = runtime; true; i-=numOfCores)
-    {
-        finished = execute(i);
-
-        if(finished == true) {
-            return;
-        }
-    }
+    leftover = runtime;
+    
+    while(!execute());
 }
 
-bool Computer::execute(int leftover) {
-    for (size_t i = 0; i < numOfCores; i++)
+bool Computer::execute() {
+    for (int i = 0; i < numOfCores; i++)
     {
-        std::cout << "CPU " << i << ": " << "remaining task length: " << (leftover - i) << "\n" << std::endl;
+        std::cout << "CPU " << i << ": " << "remaining task length: " << leftover << std::endl;
 
-        if (i == leftover) {
+        if(leftover == 0) {
             return true;
         }
+
+        leftover--;
     }
 
     return false;
