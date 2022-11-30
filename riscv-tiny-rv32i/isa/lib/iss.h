@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <iomanip>
@@ -13,6 +14,7 @@
 
 
 #define SYS_exit 93
+#define SYS_write 64
 
 
 struct RegFile {
@@ -537,6 +539,30 @@ struct ISS {
         pc += 4;
 
         switch (op) {
+            case Opcode::MUL: {
+                int64_t ans = (int64_t)regs[instr.rs1()] * (int64_t)regs[instr.rs2()];
+                regs[instr.rd()] = ans & 0xFFFFFFFF;
+            } break;
+
+            case Opcode::MULH: {
+                int64_t ans = (int64_t)regs[instr.rs1()] * (int64_t)regs[instr.rs2()];
+                regs[instr.rd()] = (ans & 0xFFFFFFFF00000000) >> 32;
+            } break;
+
+            case Opcode::MULHU: {
+                int64_t ans = ((uint64_t)(uint32_t)regs[instr.rs1()]) * (uint64_t)((uint32_t)regs[instr.rs2()]);
+                regs[instr.rd()] = (ans & 0xFFFFFFFF00000000) >> 32;
+            } break;
+
+            case Opcode::MULHSU: {
+                int64_t ans = (int64_t)regs[instr.rs1()] * (uint64_t)((uint32_t)regs[instr.rs2()]);
+                regs[instr.rd()] = (ans & 0xFFFFFFFF00000000) >> 32;
+            } break;
+
+            case Opcode::SLLI:
+                regs[instr.rd()] = regs[instr.rs1()] << instr.shamt();
+                break;
+
             case Opcode::ADDI:
                 regs[instr.rd()] = regs[instr.rs1()] + instr.I_imm();
                 break;
@@ -577,6 +603,16 @@ struct ISS {
                 uint32_t addr = regs[instr.rs1()] + instr.I_imm();
                 regs[instr.rd()] = mem->load_word(addr);
             }
+                break;
+
+            case Opcode::BEQ:
+                if (regs[instr.rs1()] == regs[instr.rs2()])
+                    pc = last_pc + instr.B_imm();
+                break;
+
+            case Opcode::BNE:
+                if (regs[instr.rs1()] != regs[instr.rs2()])
+                    pc = last_pc + instr.B_imm();
                 break;
 
             case Opcode::BLT:
