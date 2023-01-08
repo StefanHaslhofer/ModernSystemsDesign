@@ -627,7 +627,34 @@ struct ISS {
             			std::cout << "syscall exit(" << regs[RegFile::a0] << ")" << std::endl;
             			shall_exit = true;
             			break;
-            			
+            		
+                    case SYS_write: {
+            				int fd = regs[RegFile::a0];
+            				uint32_t addr = (uint32_t)regs[RegFile::a1];
+            				uint32_t size = (uint32_t)regs[RegFile::a2];
+            				int ans;
+            				
+            				if (0) {
+            					// impl 1: read memory bytewise and store results in local buffer
+		        				std::string s;
+		        				for (uint32_t i=0; i<size; ++i) {
+			        				uint8_t c = mem->load_byte(addr + i) & 0xff;
+			        				s += c;
+		        				}
+		        				ans = write(fd, s.c_str(), size);
+            				} else {
+            					// impl 2: guest to host pointer conversion and direct memory access
+	            				uint32_t memory_offset = 0;
+	            				const uint8_t *host_pointer = &mem->data[addr - memory_offset];
+	            				int ans = write(fd, host_pointer, size);
+            				}
+            				
+            				assert (ans >= 0);
+            				regs[RegFile::a0] = ans;	// provide return value
+            			}
+            			break;
+                        
+
             		default:
             			throw std::runtime_error("unknown syscall " + std::to_string(syscall));
             	}

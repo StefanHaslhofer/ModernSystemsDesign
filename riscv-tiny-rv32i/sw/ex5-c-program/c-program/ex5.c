@@ -7,4 +7,6 @@ int main()
     for(i = 0; source[i] != 0; i++) {
         dest[i] = source[i];
     }
+
+    return 0;
 }
