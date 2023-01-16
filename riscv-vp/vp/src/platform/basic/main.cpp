@@ -17,7 +17,8 @@
 #include "sensor.h"
 #include "sensor2.h"
 #include "syscall.h"
-#include "uart.h"
+// #include "uart.h"
+#include "uart2.h"
 #include "util/options.h"
 #include "platform/common/options.h"
 #include "platform/common/terminal.h"
@@ -52,8 +53,8 @@ public:
 	addr_t sys_end_addr = 0x020103ff;
 	addr_t term_start_addr = 0x20000000;
 	addr_t term_end_addr = term_start_addr + 16;
-	addr_t uart_start_addr = 0x20010000;
-	addr_t uart_end_addr = uart_start_addr + 0xfff;
+	// addr_t uart_start_addr = 0x20010000;
+	// addr_t uart_end_addr = uart_start_addr + 0xfff;
 	addr_t ethernet_start_addr = 0x30000000;
 	addr_t ethernet_end_addr = ethernet_start_addr + 1500;
 	addr_t plic_start_addr = 0x40000000;
@@ -71,6 +72,8 @@ public:
 	addr_t flash_end_addr = flash_start_addr + Flashcontroller::ADDR_SPACE;  // Usually 528 Byte
 	addr_t display_start_addr = 0x72000000;
 	addr_t display_end_addr = display_start_addr + Display::addressRange;
+	addr_t uart2_start_addr = 0x44000000;
+	addr_t uart2_end_addr = uart2_start_addr + 0x10;
 
 	bool use_E_base_isa = false;
 
@@ -122,7 +125,7 @@ int sc_main(int argc, char **argv) {
 	ISS core(0, opt.use_E_base_isa);
 	SimpleMemory mem("SimpleMemory", opt.mem_size);
 	SimpleTerminal term("SimpleTerminal");
-	UART uart("Generic_UART", 6);
+	// UART uart("Generic_UART", 6);
 	ELFLoader loader(opt.input_program.c_str());
 	SimpleBus<3, 13> bus("SimpleBus");
 	CombinedMemoryInterface iss_mem_if("MemoryInterface", core);
@@ -138,6 +141,7 @@ int sc_main(int argc, char **argv) {
 	EthernetDevice ethernet("EthernetDevice", 7, mem.data, opt.network_device);
 	Display display("Display");
 	DebugMemoryInterface dbg_if("DebugMemoryInterface");
+	UART2 uart2("UART2", 9);
 
 	MemoryDMI dmi = MemoryDMI::create_start_size_mapping(mem.data, opt.mem_start_addr, mem.size);
 	InstrMemoryProxy instr_mem(dmi, core);
@@ -184,7 +188,7 @@ int sc_main(int argc, char **argv) {
 		bus.ports[it++] = new PortMapping(opt.clint_start_addr, opt.clint_end_addr);
 		bus.ports[it++] = new PortMapping(opt.plic_start_addr, opt.plic_end_addr);
 		bus.ports[it++] = new PortMapping(opt.term_start_addr, opt.term_end_addr);
-		bus.ports[it++] = new PortMapping(opt.uart_start_addr, opt.uart_end_addr);
+		// bus.ports[it++] = new PortMapping(opt.uart_start_addr, opt.uart_end_addr);
 		bus.ports[it++] = new PortMapping(opt.sensor_start_addr, opt.sensor_end_addr);
 		bus.ports[it++] = new PortMapping(opt.dma_start_addr, opt.dma_end_addr);
 		bus.ports[it++] = new PortMapping(opt.sensor2_start_addr, opt.sensor2_end_addr);
@@ -193,6 +197,7 @@ int sc_main(int argc, char **argv) {
 		bus.ports[it++] = new PortMapping(opt.ethernet_start_addr, opt.ethernet_end_addr);
 		bus.ports[it++] = new PortMapping(opt.display_start_addr, opt.display_end_addr);
 		bus.ports[it++] = new PortMapping(opt.sys_start_addr, opt.sys_end_addr);
+		bus.ports[it++] = new PortMapping(opt.uart2_start_addr, opt.uart2_end_addr);
 	}
 
 	// connect TLM sockets
@@ -210,7 +215,7 @@ int sc_main(int argc, char **argv) {
 		bus.isocks[it++].bind(clint.tsock);
 		bus.isocks[it++].bind(plic.tsock);
 		bus.isocks[it++].bind(term.tsock);
-		bus.isocks[it++].bind(uart.tsock);
+		// bus.isocks[it++].bind(uart.tsock);
 		bus.isocks[it++].bind(sensor.tsock);
 		bus.isocks[it++].bind(dma.tsock);
 		bus.isocks[it++].bind(sensor2.tsock);
@@ -219,6 +224,7 @@ int sc_main(int argc, char **argv) {
 		bus.isocks[it++].bind(ethernet.tsock);
 		bus.isocks[it++].bind(display.tsock);
 		bus.isocks[it++].bind(sys.tsock);
+		bus.isocks[it++].bind(uart2.tsock);
 	}
 
 	// connect interrupt signals/communication
