@@ -235,6 +235,7 @@ int sc_main(int argc, char **argv) {
 	timer.plic = &plic;
 	sensor2.plic = &plic;
 	ethernet.plic = &plic;
+	uart2.plic = &plic;
 
 	std::vector<debug_target_if *> threads;
 	threads.push_back(&core);

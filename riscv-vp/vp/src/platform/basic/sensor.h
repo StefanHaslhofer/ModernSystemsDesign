@@ -70,7 +70,7 @@ struct SimpleSensor : public sc_core::sc_module {
 
 			// actual read/write
 			if (cmd == tlm::TLM_READ_COMMAND) {
-				*((uint32_t *)ptr) = *it->second;
+				*((uint32_t *)ptr) = *it->second; // directly stores data in pointer
 			} else if (cmd == tlm::TLM_WRITE_COMMAND) {
 				*it->second = *((uint32_t *)ptr);
 			} else {
