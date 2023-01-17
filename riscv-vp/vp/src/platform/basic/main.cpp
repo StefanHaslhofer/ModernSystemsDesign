@@ -17,7 +17,7 @@
 #include "sensor.h"
 #include "sensor2.h"
 #include "syscall.h"
-// #include "uart.h"
+#include "uart.h"
 #include "uart2.h"
 #include "util/options.h"
 #include "platform/common/options.h"
@@ -53,8 +53,8 @@ public:
 	addr_t sys_end_addr = 0x020103ff;
 	addr_t term_start_addr = 0x20000000;
 	addr_t term_end_addr = term_start_addr + 16;
-	// addr_t uart_start_addr = 0x20010000;
-	// addr_t uart_end_addr = uart_start_addr + 0xfff;
+	addr_t uart_start_addr = 0x20010000;
+	addr_t uart_end_addr = uart_start_addr + 0xfff;
 	addr_t ethernet_start_addr = 0x30000000;
 	addr_t ethernet_end_addr = ethernet_start_addr + 1500;
 	addr_t plic_start_addr = 0x40000000;
@@ -73,7 +73,7 @@ public:
 	addr_t display_start_addr = 0x72000000;
 	addr_t display_end_addr = display_start_addr + Display::addressRange;
 	addr_t uart2_start_addr = 0x44000000;
-	addr_t uart2_end_addr = uart2_start_addr + 0x10;
+	addr_t uart2_end_addr = uart2_start_addr + 0xfff;
 
 	bool use_E_base_isa = false;
 
@@ -125,9 +125,9 @@ int sc_main(int argc, char **argv) {
 	ISS core(0, opt.use_E_base_isa);
 	SimpleMemory mem("SimpleMemory", opt.mem_size);
 	SimpleTerminal term("SimpleTerminal");
-	// UART uart("Generic_UART", 6);
+	UART uart("Generic_UART", 6);
 	ELFLoader loader(opt.input_program.c_str());
-	SimpleBus<3, 13> bus("SimpleBus");
+	SimpleBus<3, 14> bus("SimpleBus");
 	CombinedMemoryInterface iss_mem_if("MemoryInterface", core);
 	SyscallHandler sys("SyscallHandler");
 	FE310_PLIC<1, 64, 96, 32> plic("PLIC");
@@ -188,7 +188,7 @@ int sc_main(int argc, char **argv) {
 		bus.ports[it++] = new PortMapping(opt.clint_start_addr, opt.clint_end_addr);
 		bus.ports[it++] = new PortMapping(opt.plic_start_addr, opt.plic_end_addr);
 		bus.ports[it++] = new PortMapping(opt.term_start_addr, opt.term_end_addr);
-		// bus.ports[it++] = new PortMapping(opt.uart_start_addr, opt.uart_end_addr);
+		bus.ports[it++] = new PortMapping(opt.uart_start_addr, opt.uart_end_addr);
 		bus.ports[it++] = new PortMapping(opt.sensor_start_addr, opt.sensor_end_addr);
 		bus.ports[it++] = new PortMapping(opt.dma_start_addr, opt.dma_end_addr);
 		bus.ports[it++] = new PortMapping(opt.sensor2_start_addr, opt.sensor2_end_addr);
@@ -215,7 +215,7 @@ int sc_main(int argc, char **argv) {
 		bus.isocks[it++].bind(clint.tsock);
 		bus.isocks[it++].bind(plic.tsock);
 		bus.isocks[it++].bind(term.tsock);
-		// bus.isocks[it++].bind(uart.tsock);
+		bus.isocks[it++].bind(uart.tsock);
 		bus.isocks[it++].bind(sensor.tsock);
 		bus.isocks[it++].bind(dma.tsock);
 		bus.isocks[it++].bind(sensor2.tsock);

@@ -1,4 +1,5 @@
 #ifndef RISCV_ISA_UART2_H
+#define RISCV_ISA_UART2_H
 #define BAUDRATE 31250
 
 #include <cstdlib>
@@ -15,11 +16,14 @@ struct UART2 : public sc_core::sc_module {
 	uint32_t irq_number = 0;
 	sc_core::sc_event run_event;
 
-	std::array<uint8_t, 8> rx_fifo;
+	std::queue<char> rx_fifo;
 
 	// memory mapped configuration registers
 	
-	uint32_t rx_data = 0;
+	uint32_t rx_data = 0x8000055;
+	uint32_t rx_ctrl = 1;
+	uint32_t tx_ctrl = 1;
+	uint32_t tx_data = 1;
 	std::unordered_map<uint64_t, uint32_t *> addr_to_reg;
 
 	enum {
@@ -29,12 +33,17 @@ struct UART2 : public sc_core::sc_module {
         RX_CTRL_ADDR = 0x0C,
 	};
 
+	SC_HAS_PROCESS(UART2);
+
 	UART2(sc_core::sc_module_name, uint32_t irq_number) : irq_number(irq_number) {
 		tsock.register_b_transport(this, &UART2::transport);
 		SC_THREAD(run);
 
 		addr_to_reg = {
-		    {RX_DATA_ADDR, &rx_data},
+		    {TX_DATA_ADDR, &tx_data},
+			{RX_DATA_ADDR, &rx_data},
+			{TX_CTRL_ADDR, &tx_ctrl},
+			{RX_CTRL_ADDR, &rx_ctrl}
 		};
 	}
 
@@ -60,7 +69,7 @@ struct UART2 : public sc_core::sc_module {
 
 			// fill with random data
 			for (auto &n : rx_fifo) {
-				n = rand() % 92 + 32;  // random printable char
+				n = rand();  // random printable char
 			}
 
 			plic->gateway_trigger_interrupt(irq_number);
