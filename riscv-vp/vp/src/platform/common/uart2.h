@@ -105,7 +105,6 @@ struct UART2 : public sc_core::sc_module {
 			if(rx_en == 1 && rx_fifo.size() < 8) {
 				rx_fifo.push(rand() % 26 + 65);
 
-				printf("%i\n", rx_cnt);
 				if (rx_cnt == size(rx_fifo)) {
 					plic->gateway_trigger_interrupt(irq_number);
 				}
