@@ -1,6 +1,7 @@
 #ifndef RISCV_ISA_UART2_H
 #define RISCV_ISA_UART2_H
 #define BAUDRATE 31250
+#define MAX_QUEUE_SIZE 8
 
 #include <cstdlib>
 #include <cstring>
@@ -30,6 +31,9 @@ struct UART2 : public sc_core::sc_module {
 	uint8_t rx_en = 0;
 	size_t rx_cnt = 0;
 
+	uint8_t tx_en = 0;
+	size_t tx_cnt = 0;
+
 	enum {
 		TX_DATA_ADDR = 0x00,
 		RX_DATA_ADDR = 0x04, 
@@ -42,6 +46,7 @@ struct UART2 : public sc_core::sc_module {
 	UART2(sc_core::sc_module_name, uint32_t irq_number) : irq_number(irq_number) {
 		tsock.register_b_transport(this, &UART2::transport);
 		SC_THREAD(run);
+		SC_THREAD(tx_run);
 
 		addr_to_reg = {
 		    {TX_DATA_ADDR, &tx_data},
@@ -60,6 +65,18 @@ struct UART2 : public sc_core::sc_module {
 		switch(addr)
 		{
 			case TX_DATA_ADDR:
+				if(cmd == tlm::TLM_WRITE_COMMAND) {
+					if(tx_fifo.size() < MAX_QUEUE_SIZE) {
+						tx_fifo.push(*((uint8_t*)ptr));
+					}
+				} else {
+					if(tx_fifo.size() == MAX_QUEUE_SIZE) {
+						tx_data |= 0x80000000;   // set bit 31 to 1 -> full
+					}
+
+					*((uint32_t*)ptr) = tx_data;
+				}
+
 				break;
 			case RX_DATA_ADDR:
 
@@ -81,6 +98,14 @@ struct UART2 : public sc_core::sc_module {
 
 				break;
 			case TX_CTRL_ADDR:
+				if (cmd == tlm::TLM_READ_COMMAND) {
+					*((uint32_t*)ptr) = tx_ctrl;
+				} else {
+					tx_ctrl = *((uint32_t*)ptr);
+					tx_en = tx_ctrl;
+					tx_cnt = (tx_ctrl &= 0x00070000) >> 16;
+				}
+
 				break;
 			case RX_CTRL_ADDR:
 				if (cmd == tlm::TLM_READ_COMMAND) {
@@ -102,10 +127,26 @@ struct UART2 : public sc_core::sc_module {
 			run_event.notify(sc_core::sc_time(BAUDRATE, sc_core::SC_NS));
 			sc_core::wait(run_event);  // wait 32000 NS
 
-			if(rx_en == 1 && rx_fifo.size() < 8) {
+			if(rx_en == 1 && rx_fifo.size() < MAX_QUEUE_SIZE) {
 				rx_fifo.push(rand() % 26 + 65);
 
 				if (rx_cnt == size(rx_fifo)) {
+					plic->gateway_trigger_interrupt(irq_number);
+				}
+			}
+		}
+	}
+
+	void tx_run() {
+		while (true) {
+			run_event.notify(sc_core::sc_time(BAUDRATE, sc_core::SC_NS));
+			sc_core::wait(run_event);  // wait 32000 NS
+
+			if(tx_en == 1 && tx_fifo.size() > 0) {
+				printf("%c", (tx_fifo.front() % 26 + 65));
+				tx_fifo.pop();
+
+				if (tx_cnt == size(tx_fifo)) {
 					plic->gateway_trigger_interrupt(irq_number);
 				}
 			}
