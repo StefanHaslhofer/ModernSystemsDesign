@@ -17,18 +17,22 @@ struct UART2 : public sc_core::sc_module {
 	sc_core::sc_event run_event;
 
 	std::queue<char> rx_fifo;
+	std::queue<char> tx_fifo;
 
 	// memory mapped configuration registers
 	
-	uint32_t rx_data = 0x8000055;
-	uint32_t rx_ctrl = 1;
-	uint32_t tx_ctrl = 1;
-	uint32_t tx_data = 1;
+	uint32_t rx_data = 0;
+	uint32_t rx_ctrl = 0;
+	uint32_t tx_ctrl = 0;
+	uint32_t tx_data = 0;
 	std::unordered_map<uint64_t, uint32_t *> addr_to_reg;
+
+	uint8_t rx_en = 0;
+	size_t rx_cnt = 0;
 
 	enum {
 		TX_DATA_ADDR = 0x00,
-		RX_DATA_ADDR = 0x04,
+		RX_DATA_ADDR = 0x04, 
         TX_CTRL_ADDR = 0x08,
         RX_CTRL_ADDR = 0x0C,
 	};
@@ -53,13 +57,44 @@ struct UART2 : public sc_core::sc_module {
 		auto len = trans.get_data_length();
 		auto ptr = trans.get_data_ptr();
 
-		auto it = addr_to_reg.find(addr);
+		switch(addr)
+		{
+			case TX_DATA_ADDR:
+				break;
+			case RX_DATA_ADDR:
 
-		if ((cmd == tlm::TLM_READ_COMMAND) && (addr == RX_DATA_ADDR)) {
-			*((uint32_t *)ptr) = *it->second;
+				if(cmd != tlm::TLM_READ_COMMAND) {
+					// ignore write
+					break;
+				}
+
+				// return rxdata
+				if(rx_fifo.empty()) {
+					rx_data |= 0x80000000;   // set bit 31 to 1 -> empty
+				} else {
+					rx_data &= 0x00000000;
+					rx_data |= rx_fifo.front();
+					rx_fifo.pop();
+				}
+
+				*((uint32_t*)ptr) = rx_data; 
+
+				break;
+			case TX_CTRL_ADDR:
+				break;
+			case RX_CTRL_ADDR:
+				if (cmd == tlm::TLM_READ_COMMAND) {
+					*((uint32_t*)ptr) = rx_ctrl;
+				} else {
+					rx_ctrl = *((uint32_t*)ptr);
+					rx_en = rx_ctrl;
+					rx_cnt = (rx_ctrl &= 0x00070000) >> 16;
+				}
+
+				break;
+			
 		}
-
-		(void)delay;  // zero delay
+		(void) delay;
 	}
 
 	void run() {
@@ -67,12 +102,14 @@ struct UART2 : public sc_core::sc_module {
 			run_event.notify(sc_core::sc_time(BAUDRATE, sc_core::SC_NS));
 			sc_core::wait(run_event);  // wait 32000 NS
 
-			// fill with random data
-			for (auto &n : rx_fifo) {
-				n = rand();  // random printable char
-			}
+			if(rx_en == 1 && rx_fifo.size() < 8) {
+				rx_fifo.push(rand() % 26 + 65);
 
-			plic->gateway_trigger_interrupt(irq_number);
+				printf("%i\n", rx_cnt);
+				if (rx_cnt == size(rx_fifo)) {
+					plic->gateway_trigger_interrupt(irq_number);
+				}
+			}
 		}
 	}
 };
