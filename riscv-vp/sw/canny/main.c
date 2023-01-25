@@ -61,24 +61,26 @@ int main(void)
       data_out(edge, i);
    }
 
-   StopCamera(); /* turn on the camera device */
+   StopCamera(); /* turn off the camera device */
 
    return(0); /* exit cleanly */
 }
 
 void camera_irq_handler(void)
 {
-    frames_captured++;
+   frames_captured++;
 }
 
 void StartCamera(void) /* configure and turn on the camera */
 {
-  // TODO
+   *CAMERA_WIDTH_REG_ADDR = COLS;
+   *CAMERA_HEIGHT_REG_ADDR = ROWS;
+   *CAMERA_CAPTURE_INTERVAL_REG_ADDR = 1000000;
 }
 
 void StopCamera(void)
 {
-  // TODO
+   *CAMERA_CAPTURE_INTERVAL_REG_ADDR = 0;
 }
 
 
@@ -87,7 +89,11 @@ void data_in(unsigned char *image, unsigned int i)
    /*************************************************************************
    * Grab an image from the camera
    *************************************************************************/
-  // TODO
+   if (frames_captured <= i) {
+      asm volatile("wfi");
+   }
+
+   copy_image(image, (void*) CAMERA_FRAME_BUFFER_ADDR, 1);
 }
 
 void data_out(unsigned char *edge, unsigned int i)
